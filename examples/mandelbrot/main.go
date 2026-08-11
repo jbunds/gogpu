@@ -118,8 +118,8 @@ func main() {
 			app.Quit()
 		}
 		if key == gpucontext.KeyW && mods.HasSuper() { // ⌘+w
-			if animToken.Load() != nil { // reduce GPU load by suspending animation while the primary window is hidden
-				animToken.Swap(nil)
+			if animToken.Load() != nil {
+				animToken.Swap(nil) // reduce GPU load by suspending animation while the primary window is hidden
 			}
 			app.PrimaryWindow().Hide()
 		}
@@ -144,6 +144,10 @@ func main() {
 		}
 	})
 
+	app.OnClose(func() {
+		currentRenderer.Load().(*renderer).release()
+	})
+
 	lastFrameTime = time.Now()
 
 	// main event loop
@@ -153,6 +157,7 @@ func main() {
 	}
 }
 
+// newRenderer constructs and returns the *renderer used to store runtime state.
 func newRenderer(coords coords) *renderer {
 	targetXHi, targetXLo := splitFloat64(coords.x)
 	targetYHi, targetYLo := splitFloat64(coords.y)
@@ -230,7 +235,7 @@ func (r *renderer) draw(dc *gogpu.Context, token *atomic.Pointer[gogpu.Animation
 
 	if r.state.frameCount > maxPrecisionFrames {
 		if t := token.Load(); t != nil {
-			token.Load().Stop()
+			t.Stop()
 		}
 		r.release()
 		fmt.Println("stopped rendering (precision exhausted)")
